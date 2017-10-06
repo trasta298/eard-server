@@ -4,6 +4,7 @@ namespace Eard\Event;
 
 # Basic
 use pocketmine\Player;
+use pocketmine\Server;
 use pocketmine\utils\MainLogger;
 use pocketmine\item\Item;
 use pocketmine\block\Block;
@@ -19,12 +20,15 @@ use pocketmine\event\player\PlayerItemHeldEvent;
 use pocketmine\event\player\PlayerChatEvent;
 use pocketmine\event\player\PlayerDeathEvent;
 use pocketmine\event\player\PlayerFishEvent;
+use pocketmine\event\player\PlayerRespawnEvent;
 
 use pocketmine\event\entity\EntityDamageEvent;
 use pocketmine\event\entity\EntityDamageByEntityEvent;
 
 use pocketmine\event\block\BlockBreakEvent;
 use pocketmine\event\block\BlockPlaceEvent;
+
+use pocketmine\scheduler\Task;
 
 # NetWork
 use pocketmine\event\server\DataPacketSendEvent;
@@ -105,14 +109,20 @@ class Event implements Listener{
 		$player = $e->getPlayer();
 		$e->setJoinMessage(Chat::getJoinMessage($player->getDisplayName()));
 		Connection::getPlace()->recordLogin($player->getName()); //　オンラインテーブルに記録
-
-		// 資源に来た時に携帯配布
-		if(Connection::getPlace()->isResourceArea()){
-			$inv = $player->getInventory();
-			$inv->addItem(Item::get(416));
-		}
+		Account::get($player)->applyEffect();
 	}
 
+
+
+	public function R(PlayerRespawnEvent $e){
+		$player = $e->getPlayer();
+		$task = new Delay($player, function ($player){
+			Account::get($player)->applyEffect();
+			$inv = $player->getInventory();
+			$inv->addItem(Item::get(416));
+		});
+		Server::getInstance()->getScheduler()->scheduleDelayedTask($task, 5);
+	}
 
 
 	public function Q(PlayerQuitEvent $e){
@@ -257,7 +267,9 @@ class Event implements Listener{
 		if($e->getAction() == 3 or $e->getAction() == 0){
 			if($x && $y && $z){ // 空中でなければ
 				if($e->getItem()->getId() == 0){
-					new HelpForm($playerData);
+					if(Connection::getPlace()->isLivingArea()){
+						new HelpForm($playerData);
+					}
 				}
 				BlockObjectManager::startBreak($x, $y, $z, $player); // キャンセルとかはさせられないので、表示を出すだけ。
 			}
@@ -692,4 +704,17 @@ class Event implements Listener{
 		}
 	}
 */
+}
+
+class Delay extends Task{
+
+	public function __construct($player, $func){
+		$this->player = $player;
+		$this->func = $func;
+	}
+
+	public function onRun($tick){
+		$func = $this->func;
+		$func($this->player);
+	}
 }
