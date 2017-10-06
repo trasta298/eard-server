@@ -547,10 +547,10 @@ class MenuForm extends FormBase {
 								'content' => "§「惑星Eard > {$p->getName()}」へ行きます。".
 											"${msg}\n".
 											"§fよろしいですか？",
-								'button1' => "やめる",
-								'button2' => "行く",
+								'button1' => "行く",
+								'button2' => "やめる",
 							];
-							$cache = [1, 18];
+							$cache = [18, 1];
 						}
 					}
 				}
